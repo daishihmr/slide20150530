@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <style>
+    @font-face {
+        font-family: 'uni';
+        src: url(lib/font/unip.ttf);
+    }
+    </style>
+</head>
+
+<body style="margin:0">
+    <canvas id="app"></canvas>
+    <textarea id="bulletml" style="width:800px;height:500px;font-size:20px;font-family:'uni'">
+<bulletml>
+<action label="top">
+    <fire>
+        <speed>10</speed>
+        <bullet/>
+    </fire>
+</action>
+</bulletml>
+</textarea>
+    <br>
+    <button id="start" style="font-size:50px;font-family:'uni'">攻撃開始</button>
+    
+<!--      <br><br><br><br><br>
+
+    <button id="enc">enc</button>
+    <br>
+    <textarea id="encoded"></textarea>
+ -->
+    <script src="https://cdn.rawgit.com/phi-jp/tmlib.js/develop/build/tmlib.min.js"></script>
+    <script src="./lib/js/bulletml.js"></script>
+    <script>
+    var W = 500;
+    var H = 500;
+    tm.main(function() {
+        var app = tm.display.CanvasApp("#app");
+        app.resize(W, H);
+        app.fps = 60;
+        app.run();
+
+        var scene = app.currentScene;
+
+        scene.fromJSON({
+            children: {
+                mainLayer: {
+                    type: "tm.display.CanvasElement"
+                },
+                bulletLayer: {
+                    type: "tm.display.CanvasElement"
+                }
+            }
+        });
+
+        var enemy = tm.display.RectangleShape({
+                width: 60,
+                height: 60,
+            })
+            .setPosition(W * 0.5, H * 0.3)
+            .addChildTo(scene.mainLayer);
+
+        var player = tm.display.TriangleShape({
+                width: 40,
+                height: 40
+            })
+            .setPosition(W * 0.5, H * 0.8)
+            .addChildTo(scene.mainLayer)
+            .on("enterframe", function(e) {
+                var p = e.app.pointing;
+                if (p.getPointing()) {
+                    this.position.add(p.deltaPosition.mul(2));
+                }
+            });
+
+        bulletml.Walker.globalScope["$rank"] = 0.5;
+
+        var conf = {
+            target: player,
+            createNewBullet: function(runner) {
+                var bullet = tm.display.CircleShape({
+                        width: 30,
+                        height: 30,
+                    })
+                    .setPosition(runner.x, runner.y)
+                    .addChildTo(scene.bulletLayer)
+                    .on("enterframe", function() {
+                        runner.update();
+                        this.x = runner.x;
+                        this.y = runner.y;
+                    });
+            },
+            speedRate: 3
+        };
+
+        var textarea = tm.dom.Element("#bulletml");
+        textarea.event.add("keydown", function(e) {
+            if (e.keyCode === 9) {
+                e.preventDefault();
+                var s = this.element.selectionStart;
+                this.value = this.value.substring(0, s) + "    " + this.value.substring(s);
+                this.element.setSelectionRange(s + 4, s + 4);
+            }
+        });
+
+        tm.dom.Element("#start")
+            .event.add("click", function() {
+                enemy.clearEventListener("enterframe");
+                scene.bulletLayer.removeChildren();
+
+                try {
+                    var attackPattern = bulletml.buildXML(textarea.value);
+                    var runner = attackPattern.createRunner(conf);
+                    enemy.on("enterframe", function() {
+                        runner.x = this.x;
+                        runner.y = this.y;
+                        try {
+                            runner.update();
+                        } catch (e) {
+                            enemy.clearEventListener("enterframe");
+                        }
+                    });
+                } catch (e) {}
+            });
+
+        // tm.dom.Element("#enc")
+        //     .event.add("click", function() {
+        //         tm.dom.Element("#encoded").value = encodeURIComponent(textarea.value);
+        //     });
+
+
+        if (location.search) {
+            var text = decodeURIComponent(location.search.substring(1));
+            textarea.value = text;
+        }
+    });
+    </script>
+</body>
+
+</html>
